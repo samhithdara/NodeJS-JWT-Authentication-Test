@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js" integrity="sha512-s+xg36jbIujB2S2VKfpGmlC3T5V2TF3lY48DX7u2r9XzGzgPsa6wTpOQA7J9iffvdeBN0q9tKzRxVxw1JviZPg==" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.20.0/axios.min.js" integrity="sha512-quHCp3WbBNkwLfYUMd+KwBAgpVukJu5MncuQaWXgCrfgcxCJAq/fo+oqrRKOj+UKEmyMCG3tb8RB63W+EmrOBg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+</head>
+<body>
+    <div class="container-fluid">
+        <h1 class="row">Login here</h1>
+        <main>
+            <div class="row">
+                <label for="username">username</label>
+                <input type="text" name="username" id="username">
+            </div>
+            <div class="row">
+                <label for="password">password</label>
+                <input type="password" name="password" id="password">
+            </div>
+            <div>
+                <button onclick="login()">Login</button>
+                <button onclick="getDashboard()">Get Dashboard</button>
+                <button onclick="getSettings()">Get Settings</button>
+            </div>
+        </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> <!-- Make sure Axios is included -->
+
+<script>
+    // Commented below line so that settings can be accessed
+    // getDashboard();
+    function login() {
+        const data = {
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value,
+        }
+        changeUrl('Login', '/');
+        
+        axios.post('api/login',data)
+        .then(res=>{
+            console.log(res);
+            document.getElementById('username').value ='';
+            document.getElementById('password').value = '';
+            if (res && res.data && res.data.success){
+                const token = res.data.token;
+                localStorage.setItem('jwt',token);
+                setReloadTime(token);
+                getDashboard();
+            }   
+        });
+    }
+
+    function getDashboard() {
+            
+            const token = localStorage.getItem('jwt');
+            axios.get('/api/dashboard', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+                .then(res => {
+                    console.log(res);
+                    if (res && res.data && res.data.success) {
+                        console.log("Dashboard");
+                        changeUrl('Dashboard', '/dashboard');
+                        document.querySelector('h1.row').innerHTML = 'Dashboard';
+                        document.querySelector('main').innerHTML = res.data.myContent;
+                        var btn = document.createElement("Button");
+                    } 
+                    else {
+                        alert('Token Expired ');
+                        changeUrl('Login','/');
+                        window.location.reload();
+                    }
+                });
+
+    }
+
+    function getSettings() {
+            
+            const token = localStorage.getItem('jwt');
+            axios.get('/api/setting', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+                .then(res => {
+                    if (res && res.data && res.data.success) {
+                        console.log("Setting");
+                        changeUrl('Setting', '/setting');
+                        document.querySelector('h1.row').innerHTML = 'Setting';
+                        document.querySelector('main').innerHTML = res.data.myContent;
+                    } 
+                    else {
+                        alert('Token Expired ');
+                        changeUrl('Login','/');
+                        window.location.reload();
+                    }
+                });
+
+    }
+
+    function changeUrl(title, URL){
+        console.log("URL")
+        history.pushState({},title,URL);
+    }
+
+    function setReloadTime(token) {
+        if (!token) {
+            handleTokenExpiration();
+        }
+        else {
+            const tokenData = JSON.parse(atob(token.split('.')[1]));
+            const tokenExp = tokenData.exp * 1000;
+            const currentTime = Date.now();
+            setTimeout(handleTokenExpiration,tokenExp-currentTime);
+        }
+    }
+
+    function handleTokenExpiration() {
+            const token = localStorage.getItem('jwt');
+                localStorage.removeItem('jwt');
+                changeUrl('Login','/');
+                window.location.reload();
+        }
+</script>
+</body>
+</html>
